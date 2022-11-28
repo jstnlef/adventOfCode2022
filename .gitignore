@@ -1,0 +1,10 @@
+.idea
+.env
+
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+
+.fake
