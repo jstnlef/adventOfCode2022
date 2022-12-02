@@ -1,15 +1,17 @@
 ﻿open System.IO
 
-type FoodCalories = int list
-type AllElves = FoodCalories list
-
 let elfWithMostCaloricFood elves =
   elves
-  |> List.map List.sum
-  |> List.max
+  |> Seq.map List.sum
+  |> Seq.max
 
+let top3withMostCaloricFood elves =
+  elves
+  |> Seq.map List.sum
+  |> Seq.sortDescending
+  |> Seq.take 3
+  |> Seq.sum
 
-// type State = { all: int list list; current: int list}
 let elvesWithFood =
   let s =
     File.ReadLines "Day1/input.txt"
@@ -24,13 +26,5 @@ let elvesWithFood =
   let (all, _) = s
   all
 
-// let elvesWithFood =
-//   [| [|1000
-//        2000
-//        3000|]
-//      [| 4000 |]
-//      [|7000
-//        8000
-//        9000|] |]
-
 printfn "Elf with most caloric food: %d" (elfWithMostCaloricFood elvesWithFood)
+printfn "Top 3 elves with most caloric food: %d" (top3withMostCaloricFood elvesWithFood)
