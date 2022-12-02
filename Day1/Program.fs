@@ -1,31 +1,36 @@
 ﻿open System.IO
 
-let part1_single_delta depths =
-  let mutable count = 0
-  let mutable last = 10000
-  for depth in depths do
-    if depth > last then
-      count <- count + 1
-    last <- depth
-  count
+type FoodCalories = int list
+type AllElves = FoodCalories list
 
-let part2_sliding_delta (depths: int array) =
-  let mutable count = 0
-  let mutable last = 1000000
-  for i in seq { 0 .. depths.Length - 3 } do
-    let x = depths[i]
-    let y = depths[i+1]
-    let z = depths[i+2]
-    let sum = x + y + z
-    if sum > last then
-      count <- count + 1
-    last <- sum
-  count
+let elfWithMostCaloricFood elves =
+  elves
+  |> List.map List.sum
+  |> List.max
 
-let depths =
-  File.ReadLines "Day1/input.txt"
-  |> Seq.map int
-  |> Seq.toArray
 
-printfn "Part 1 Depth increased: %d" (part1_single_delta depths)
-printfn "Part 2 Depth increased: %d" (part2_sliding_delta depths)
+// type State = { all: int list list; current: int list}
+let elvesWithFood =
+  let s =
+    File.ReadLines "Day1/input.txt"
+    |> Seq.fold (fun state line ->
+      let (all, current) = state
+      if line = "" then
+        (current :: all, [])
+      else
+        (all, (int line) :: current)
+    ) ([], [])
+
+  let (all, _) = s
+  all
+
+// let elvesWithFood =
+//   [| [|1000
+//        2000
+//        3000|]
+//      [| 4000 |]
+//      [|7000
+//        8000
+//        9000|] |]
+
+printfn "Elf with most caloric food: %d" (elfWithMostCaloricFood elvesWithFood)
