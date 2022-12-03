@@ -17,17 +17,41 @@ let split size source =
 
 let fileName = "Day3/input.txt"
 
+let priorityForChar c =
+  if (Char.IsUpper(c)) then
+    int c - int 'A' + 27
+  else
+    int c - int 'a' + 1
+
 let priorityForRucksack (rucksack: Rucksack) =
   let (first, second) = rucksack
   let shared = ((Set.intersect first second) |> Set.toArray)[0]
-  if (Char.IsUpper(shared)) then
-    int shared - int 'A' + 27
-  else
-    int shared - int 'a' + 1
+  priorityForChar shared
 
-let sumOfPriorities rucksacks =
+let sumOfRucksackPriorities (rucksacks: Rucksack seq) =
   rucksacks
   |> Seq.map priorityForRucksack
+  |> Seq.sum
+
+let priorityFor3Elves (rucksacks: Rucksack array) =
+  let mergeSack rucksack =
+    let (a, b) = rucksack
+    Set.union a b
+
+  let shared =
+    rucksacks
+    |> Seq.map mergeSack
+    |> Seq.reduce (fun first next ->
+      Set.intersect first next
+    )
+    |> Seq.toArray
+
+  priorityForChar shared[0]
+
+let sumOf3ElfBadgePriorities (rucksacks: Rucksack seq) =
+  rucksacks
+  |> Seq.chunkBySize 3
+  |> Seq.map priorityFor3Elves
   |> Seq.sum
 
 let rucksacks =
@@ -37,4 +61,5 @@ let rucksacks =
     (Set.ofArray s[0], Set.ofArray s[1])
   )
 
-printfn "Sum of the rucksack priorities: %d" (sumOfPriorities rucksacks)
+printfn "Sum of the shared rucksack priorities: %d" (sumOfRucksackPriorities rucksacks)
+printfn "Sum of the 3 elf group badge priorities: %d" (sumOf3ElfBadgePriorities rucksacks)
