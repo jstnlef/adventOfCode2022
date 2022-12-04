@@ -25,5 +25,5 @@ let parseElvesWithFood fileName =
         (all, (int line) :: current)
     ) ([], [])
 
-  let (all, _) = s
-  all
+  let (all, current) = s
+  current :: all
