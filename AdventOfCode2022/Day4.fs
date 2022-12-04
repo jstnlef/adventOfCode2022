@@ -1,36 +1,32 @@
 module Day4
 
-open System
 open System.IO
 
-type Pair = int Set * int Set
+type Assignment = int Set
+type Pair = Assignment * Assignment
 
-let IsPairFullyContained (pair: Pair) =
-  let a, b = pair
-  let maxSize =
-    [a; b]
-    |> List.map Set.count
-    |> List.max
-  let union = Set.union a b
-  union.Count = maxSize
+module Pair =
+  let assignmentsAreFullyContained (pair: Pair) =
+    let a, b = pair
+    let maxSize =
+      [a; b]
+      |> List.map Set.count
+      |> List.max
+    let union = Set.union a b
+    union.Count = maxSize
 
-let findFullyContainedAssignments (assignments: Pair seq) =
+  let assignmentsAreOverlapping (pair: Pair) =
+    let a, b = pair
+    let intersection = Set.intersect a  b
+    intersection.Count > 0
+
+let countAssignments filterFunc assignments  =
   assignments
-  |> Seq.filter IsPairFullyContained
-  |> Seq.length
-
-let isPairOverlapping (pair: Pair) =
-  let a, b = pair
-  let intersection = Set.intersect a  b
-  intersection.Count > 0
-
-let findOverlappingAssignments (assignments: Pair seq) =
-  assignments
-  |> Seq.filter isPairOverlapping
+  |> Seq.filter filterFunc
   |> Seq.length
 
 let parseAssignmentPairs fileName =
-  let parseLine (line: string): Pair =
+  let parseLine (line: string) =
     let split = line.Split ","
     let sets =
       split
