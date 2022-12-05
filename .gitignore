@@ -1,5 +1,6 @@
 .idea
 .env
+*.DotSettings.user
 
 **/bin/
 **/obj/

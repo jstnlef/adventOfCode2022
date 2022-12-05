@@ -10,7 +10,7 @@ let ``Top crates after rearrangement`` (fileName: string, expected: string) =
   let result =
     parseSuppliesAndProcedures fileName
     ||> Supplies.rearrange
-    |> Supplies.top3Crates
+    |> Supplies.topCratesPerStack
   Assert.Equal(expected, result)
 
 [<Theory>]
