@@ -5,7 +5,7 @@ open System.Collections.Generic
 open System.IO
 open System.Text.RegularExpressions
 
-type Supplies = Stack<char> array
+type Supplies = Stack<string> array
 
 type Step =
   {
@@ -44,8 +44,38 @@ let parseProcedure (input: string): Procedure =
       toStack=int m.Groups[3].Value
     })
 
-let parseStacks input =
-  [|Stack(['Z'; 'N']); Stack(['M'; 'C'; 'D']); Stack(['P'])|]
+let parseStacks (input: string): Supplies =
+  let lines = input.Split "\n"
+  let columns = lines[lines.Length - 1]
+  let columnsRegex = Regex("(\d)")
+  let columnMatches = columnsRegex.Matches columns
+
+  let columnLookup =
+    columnMatches
+    |> Seq.mapi (fun i m -> m.Index, i)
+    |> Map.ofSeq
+
+  let stacks =
+    columnMatches
+    |> Seq.map (fun _ -> Stack<string>())
+    |> Seq.toArray
+
+  let addToStack (m: Match) =
+    let group = m.Groups[1]
+    let stackIndex = columnLookup[group.Index]
+    stacks[stackIndex].Push(group.Value)
+
+  let regex = Regex("\s*\[([A-Z])\]+")
+  let collections =
+    lines[0..lines.Length - 2]
+    |> Seq.rev
+    |> Seq.map regex.Matches
+
+  for collection in collections do
+    for m in collection do
+      addToStack m
+
+  stacks
 
 let parseSuppliesAndProcedures fileName: Procedure * Supplies =
   let input = File.ReadAllText fileName

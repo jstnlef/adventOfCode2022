@@ -5,7 +5,7 @@ open Day5
 
 [<Theory>]
 [<InlineData("Day5/testInput.txt", "CMZ")>]
-[<InlineData("Day5/input.txt", "")>]
+[<InlineData("Day5/input.txt", "TLNGFGMFN")>]
 let ``Top crates after rearrangement`` (fileName: string, expected: string) =
   let result =
     parseSuppliesAndProcedures fileName
