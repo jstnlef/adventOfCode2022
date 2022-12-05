@@ -17,21 +17,33 @@ type Step =
 type Procedure = Step seq
 
 module Step =
-  let perform (supplies: Supplies) (step: Step): Supplies =
+  let performWithCrateMover9000 (supplies: Supplies) (step: Step): Supplies =
     let fromStack = supplies[step.fromStack - 1]
     let toStack = supplies[step.toStack - 1]
     for _ in seq { 0 .. step.move - 1 } do
-      let popped = fromStack.Pop()
-      toStack.Push(popped)
+      toStack.Push(fromStack.Pop())
+    supplies
+
+  let performWithCrateMover9001 (supplies: Supplies) (step: Step): Supplies =
+    let fromStack = supplies[step.fromStack - 1]
+    let toStack = supplies[step.toStack - 1]
+    let movingStack =
+      seq { 0 .. step.move - 1 }
+      |> Seq.map (fun _ -> fromStack.Pop())
+      |> Seq.rev
+
+    for stack in movingStack do
+      toStack.Push(stack)
+
     supplies
 
 module Supplies =
-  let rearrange (procedure: Procedure) (supplies: Supplies): Supplies =
-    Seq.fold Step.perform supplies procedure
+  let rearrange performer (procedure: Procedure) (supplies: Supplies): Supplies =
+    Seq.fold performer supplies procedure
 
   let topCratesPerStack (supplies: Supplies): string =
     supplies
-    |> Array.map (fun s -> s.Peek())
+    |> Seq.map (fun s -> s.Peek())
     |> String.Concat
 
 let parseProcedure (input: string): Procedure =
@@ -47,7 +59,7 @@ let parseProcedure (input: string): Procedure =
 let parseStacks (input: string): Supplies =
   let lines = input.Split "\n"
   let columns = lines[lines.Length - 1]
-  let columnsRegex = Regex("(\d)")
+  let columnsRegex = Regex("\d")
   let columnMatches = columnsRegex.Matches columns
 
   let columnLookup =
