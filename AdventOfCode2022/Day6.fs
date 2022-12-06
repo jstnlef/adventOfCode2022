@@ -5,13 +5,13 @@ open System.IO
 type DataStream = string
 
 module DataStream =
-  let private findStartOfMarker (markerSize: int) (datastream: DataStream): int =
-    let isDistinct chars =
-      let charSet = chars |> Array.map snd |> Set.ofArray
-      chars.Length = charSet.Count
+  let private findStartOfMarker (markerSize: int) (dataStream: DataStream): int =
+    let isDistinct indexedChars =
+      let charSet = indexedChars |> Array.map snd |> Set.ofArray
+      indexedChars.Length = charSet.Count
 
     let marker =
-      datastream
+      dataStream
       |> Seq.mapi (fun i c -> i, c)
       |> Seq.windowed markerSize
       |> Seq.find isDistinct
