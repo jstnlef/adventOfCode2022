@@ -12,13 +12,19 @@ open Day6
 [<InlineData("Day6/input.txt", 1987)>]
 let ``Find start of packet marker in data stream`` (fileName: string, expected: int) =
   let result =
-    parseDataStream fileName
-    |> findStartOfPacketMarker
+    DataStream.parse fileName
+    |> DataStream.findStartOfPacketMarker
   Assert.Equal(expected, result)
 
 [<Theory>]
-[<InlineData("Day6/testInput.txt", "")>]
-[<InlineData("Day6/input.txt", "")>]
-let ``2`` (fileName: string, expected: string) =
-  let result = ""
+[<InlineData("Day6/sample1.txt", 19)>]
+[<InlineData("Day6/sample2.txt", 23)>]
+[<InlineData("Day6/sample3.txt", 23)>]
+[<InlineData("Day6/sample4.txt", 29)>]
+[<InlineData("Day6/sample5.txt", 26)>]
+[<InlineData("Day6/input.txt", 3059)>]
+let ``Find start of message marker in data stream`` (fileName: string, expected: int) =
+  let result =
+    DataStream.parse fileName
+    |> DataStream.findStartOfMessageMarker
   Assert.Equal(expected, result)
