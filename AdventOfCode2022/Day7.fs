@@ -81,8 +81,7 @@ module FileSystem =
 
   type private DiscoverState = {
     fileTree: FileTree
-    currentDir: string
-    parentDir: Stack<string>
+    path: Stack<string>
   }
 
   let private entryToTree (entry: FileEntry): FileTree =
@@ -98,22 +97,30 @@ module FileSystem =
   let private processCommand (state: DiscoverState) (command: Command): DiscoverState =
     match command with
     | Command.ChangeDirectory name when name = ".." ->
-      { state with currentDir = state.parentDir.Pop() }
+      let _ = state.path.Pop()
+      state
     | Command.ChangeDirectory name ->
-      state.parentDir.Push(state.currentDir)
-      { state with currentDir = name }
+      state.path.Push(name)
+      state
     | Command.ListDirectories -> state
 
   let private addFileEntry (entry: FileEntry) (state: DiscoverState): FileTree =
-    let rec addFileEntryToDirectory (currentDir: string) (newTree: FileTree) (currentTree: FileTree): FileTree =
+    let rec addFileEntryToDirectory (path: string array) (newTree: FileTree) (currentTree: FileTree): FileTree =
+      let currentDir = path[0]
       match currentTree with
       | FileTree.Directory(name, files) when currentDir = name ->
         FileTree.Directory(name, newTree::files)
       | FileTree.Directory(name, files) ->
-        FileTree.Directory(name, files |> List.map (addFileEntryToDirectory currentDir newTree))
+        FileTree.Directory(name, files |> List.map (fun f ->
+          let next = path[path.Length-2]
+          match f with
+          | FileTree.Directory(name, _) when name = next ->
+            addFileEntryToDirectory path[0..path.Length-2] newTree f
+          | _ -> f
+        ))
       | _ -> currentTree
 
-    addFileEntryToDirectory state.currentDir (entryToTree entry) state.fileTree
+    addFileEntryToDirectory (state.path.ToArray()) (entryToTree entry) state.fileTree
 
   let private discover state (entry: ShellEntry): DiscoverState =
     match entry with
@@ -126,8 +133,7 @@ module FileSystem =
     let undiscoveredTree = FileTree.Directory(name = "/", files = [])
     let state = {
       fileTree = undiscoveredTree
-      currentDir = "/"
-      parentDir = Stack()
+      path = Stack(["/"])
     }
     let state = Seq.fold discover state (history |> Seq.tail)
     state.fileTree
