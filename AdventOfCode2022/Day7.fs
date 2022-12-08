@@ -4,13 +4,10 @@ type Command =
   | ChangeDirectory of name: string
   | ListDirectories
 
-type FileEntry =
-  | Directory of name: string
-  | File of name: string * size: int
-
 type ShellEntry =
   | Command of Command
-  | FileEntry of FileEntry
+  | Directory of name: string
+  | File of name: string * size: int
 
 type ShellHistory = ShellEntry seq
 
@@ -18,122 +15,82 @@ module Shell =
   open System.IO
   open System.Text.RegularExpressions
 
-  let private commandRegex = Regex("\$ ([a-z]+) *([\w.\.\/]*)")
-  let private directoryRegex = Regex("dir ([\w.\.\/]*)")
-  let private fileRegex = Regex("(\d+) ([\w.\.\/]*)")
+  let private commandRegex =
+    Regex("\$ ([a-z]+) *([\w.\.\/]*)")
 
-  let private parseLine line: ShellEntry =
+  let private directoryRegex =
+    Regex("dir ([\w.\.\/]*)")
+
+  let private fileRegex =
+    Regex("(\d+) ([\w.\.\/]*)")
+
+  let private parseLine line : ShellEntry =
     let commandMatch = commandRegex.Match line
     let dirMatch = directoryRegex.Match line
     let fileMatch = fileRegex.Match line
+
     if commandMatch.Success then
       if commandMatch.Groups[1].Value = "cd" then
         Command(ChangeDirectory(commandMatch.Groups[2].Value))
       else
         Command(ListDirectories)
     else if dirMatch.Success then
-      FileEntry(FileEntry.Directory(dirMatch.Groups[1].Value))
+      ShellEntry.Directory(dirMatch.Groups[1].Value)
     else
-      FileEntry(FileEntry.File(fileMatch.Groups[2].Value, int fileMatch.Groups[1].Value))
+      ShellEntry.File(fileMatch.Groups[2].Value, int fileMatch.Groups[1].Value)
 
-  let parseHistory filename: ShellHistory =
-    File.ReadLines filename
-    |> Seq.map parseLine
+  let parseHistory filename : ShellHistory =
+    File.ReadLines filename |> Seq.map parseLine
 
 
-type FileTree =
-  | Directory of name: string * files: FileTree list
-  | File of name: string * size: int
+type File =
+  { path: string
+    name: string
+    size: int }
+
+type FileSystem = File seq
+
+let pathSeparator = "->"
 
 module FileSystem =
-  open System.Collections.Generic
+  let rec getDirectorySizes (files: FileSystem) : int seq =
+    let deepestPath =
+      files
+      |> Seq.map (fun f -> f.path)
+      |> Seq.maxBy (fun p -> p.Length)
 
-  let rec iter (file: FileTree): FileTree seq =
-    seq {
-      match file with
-      | Directory(_, children) as d ->
-        yield d
-        for f in children do
-          for child in iter f do
-            yield child
-      | File _ as f ->
-        yield f
-    }
+    files
+    |> Seq.groupBy (fun f -> f.path)
+    |> Seq.map (fun (k, v) -> v |> Seq.map (fun f -> f.size) |> Seq.sum)
 
-  let rec getDirectories (file: FileTree): FileTree seq =
-    let isDirectory file =
-      match file with Directory _ -> true | _ -> false
+  type private DiscoverState = { path: string list; files: File list }
 
-    file
-    |> iter
-    |> Seq.filter isDirectory
+  let private generatePath pathParts =
+    pathParts
+    |> List.rev
+    |> String.concat pathSeparator
 
-  let size (file: FileTree): int =
-    let sizeOfFile file =
-      match file with
-      | Directory _ -> 0
-      | File(size = size) -> size
-
-    file
-    |> iter
-    |> Seq.map sizeOfFile
-    |> Seq.sum
-
-  type private DiscoverState = {
-    fileTree: FileTree
-    path: Stack<string>
-  }
-
-  let private entryToTree (entry: FileEntry): FileTree =
-    match entry with
-    | FileEntry.Directory name -> Directory(name, [])
-    | FileEntry.File(name, size) -> File(name, size)
-
-  let findDirectoryByName (name: string) (fileTree: FileTree): bool =
-    match fileTree with
-    | FileTree.Directory(dName, _) when dName = name -> true
-    | _ -> false
-
-  let private processCommand (state: DiscoverState) (command: Command): DiscoverState =
+  let private processCommand state command : DiscoverState =
     match command with
-    | Command.ChangeDirectory name when name = ".." ->
-      let _ = state.path.Pop()
-      state
-    | Command.ChangeDirectory name ->
-      state.path.Push(name)
-      state
+    | Command.ChangeDirectory name when name = ".." -> { state with DiscoverState.path = List.removeAt 0 state.path }
+    | Command.ChangeDirectory name -> { state with DiscoverState.path = name :: state.path }
     | Command.ListDirectories -> state
 
-  let private addFileEntry (entry: FileEntry) (state: DiscoverState): FileTree =
-    let rec addFileEntryToDirectory (path: string array) (newTree: FileTree) (currentTree: FileTree): FileTree =
-      let currentDir = path[0]
-      match currentTree with
-      | FileTree.Directory(name, files) when currentDir = name ->
-        FileTree.Directory(name, newTree::files)
-      | FileTree.Directory(name, files) ->
-        FileTree.Directory(name, files |> List.map (fun f ->
-          let next = path[path.Length-2]
-          match f with
-          | FileTree.Directory(name, _) when name = next ->
-            addFileEntryToDirectory path[0..path.Length-2] newTree f
-          | _ -> f
-        ))
-      | _ -> currentTree
+  let private discoverFileSystem state shellEntry =
+    match shellEntry with
+    | ShellEntry.File (name, size) ->
+      let f =
+        { path = state.path |> generatePath
+          name = name
+          size = size }
 
-    addFileEntryToDirectory (state.path.ToArray()) (entryToTree entry) state.fileTree
+      { state with files = f :: state.files }
+    | ShellEntry.Directory _ -> state
+    | ShellEntry.Command c -> processCommand state c
 
-  let private discover state (entry: ShellEntry): DiscoverState =
-    match entry with
-    | FileEntry entry ->
-      {state with fileTree = addFileEntry entry state }
-    | Command c ->
-      processCommand state c
+  let fromShellHistory (history: ShellHistory) : FileSystem =
+    let state = { path = []; files = [] }
 
-  let fromShellHistory (history: ShellHistory): FileTree =
-    let undiscoveredTree = FileTree.Directory(name = "/", files = [])
-    let state = {
-      fileTree = undiscoveredTree
-      path = Stack(["/"])
-    }
-    let state = Seq.fold discover state (history |> Seq.tail)
-    state.fileTree
+    history
+    |> Seq.fold discoverFileSystem state
+    |> fun processed -> processed.files
