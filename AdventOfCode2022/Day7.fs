@@ -1,7 +1,5 @@
 module Day7
 
-open System
-
 type Command =
   | ChangeDirectory of name: string
   | ListDirectories
@@ -37,7 +35,6 @@ module Shell =
       FileEntry(FileEntry.Directory(dirMatch.Groups[1].Value))
     else
       FileEntry(FileEntry.File(fileMatch.Groups[2].Value, int fileMatch.Groups[1].Value))
-
 
   let parseHistory filename: ShellHistory =
     File.ReadLines filename
@@ -84,7 +81,8 @@ module FileSystem =
 
   type private DiscoverState = {
     fileTree: FileTree
-    breadCrumbs: Stack<FileTree>
+    currentDir: string
+    parentDir: Stack<string>
   }
 
   let private entryToTree (entry: FileEntry): FileTree =
@@ -92,43 +90,35 @@ module FileSystem =
     | FileEntry.Directory name -> Directory(name, [])
     | FileEntry.File(name, size) -> File(name, size)
 
-  let private addFile (entry: FileEntry) (fileTree: FileTree): FileTree =
-    match fileTree with
-    | FileTree.Directory(name, files) ->
-      FileTree.Directory(name, (entryToTree entry)::files)
-    | FileTree.File _ ->
-      failwith "Can't add a file to a file"
-
   let findDirectoryByName (name: string) (fileTree: FileTree): bool =
     match fileTree with
     | FileTree.Directory(dName, _) when dName = name -> true
     | _ -> false
 
-  let private replaceInTree (updatedFileTree: FileTree) (fileTree: FileTree): FileTree =
-    match updatedFileTree, fileTree with
-    | FileTree.Directory(updatedName, updatedFiles), FileTree.Directory(name, files) ->
-      let mutable filesArray =
-        files
-        |> List.toArray
-      let replaceIndex = filesArray |> Array.findIndex (findDirectoryByName updatedName)
-      filesArray[replaceIndex] <- updatedFileTree
-      FileTree.Directory(name, Array.toList filesArray)
-    | _ -> failwith "shouldn't work with files"
-
   let private processCommand (state: DiscoverState) (command: Command): DiscoverState =
     match command with
     | Command.ChangeDirectory name when name = ".." ->
-      let parent = state.breadCrumbs.Pop()
-      { state with fileTree = replaceInTree state.fileTree parent }
+      { state with currentDir = state.parentDir.Pop() }
     | Command.ChangeDirectory name ->
-      state.breadCrumbs.Push(state.fileTree)
-      { state with fileTree = state.fileTree |> iter |> Seq.find (findDirectoryByName name) }
+      state.parentDir.Push(state.currentDir)
+      { state with currentDir = name }
     | Command.ListDirectories -> state
+
+  let private addFileEntry (entry: FileEntry) (state: DiscoverState): FileTree =
+    let rec addFileEntryToDirectory (currentDir: string) (newTree: FileTree) (currentTree: FileTree): FileTree =
+      match currentTree with
+      | FileTree.Directory(name, files) when currentDir = name ->
+        FileTree.Directory(name, newTree::files)
+      | FileTree.Directory(name, files) ->
+        FileTree.Directory(name, files |> List.map (addFileEntryToDirectory currentDir newTree))
+      | _ -> currentTree
+
+    addFileEntryToDirectory state.currentDir (entryToTree entry) state.fileTree
 
   let private discover state (entry: ShellEntry): DiscoverState =
     match entry with
-    | FileEntry f ->
-      {state with fileTree = addFile f state.fileTree}
+    | FileEntry entry ->
+      {state with fileTree = addFileEntry entry state }
     | Command c ->
       processCommand state c
 
@@ -136,9 +126,8 @@ module FileSystem =
     let undiscoveredTree = FileTree.Directory(name = "/", files = [])
     let state = {
       fileTree = undiscoveredTree
-      breadCrumbs = Stack()
+      currentDir = "/"
+      parentDir = Stack()
     }
-    let mutable state = Seq.fold discover state (history |> Seq.tail)
-    while state.breadCrumbs.Count > 0 do
-      state <- discover state (ShellEntry.Command(Command.ChangeDirectory("..")))
+    let state = Seq.fold discover state (history |> Seq.tail)
     state.fileTree
