@@ -48,24 +48,43 @@ type File =
     name: string
     size: int }
 
+type Directory = { name: string; files: File list }
+
 type FileSystem = File seq
 
 let pathSeparator = "->"
 
 module FileSystem =
-  let rec getDirectorySizes (files: FileSystem) : int seq =
-    let deepestPath =
-      files
-      |> Seq.map (fun f -> f.path)
-      |> Seq.maxBy (fun p -> p.Length)
-      |> (fun s -> s.Split(pathSeparator))
-
+  let rec getDirectories (files: FileSystem) : Directory seq =
     let filesMap =
       files
       |> Seq.groupBy (fun f -> f.path)
       |> Map.ofSeq
 
-    Seq.empty
+    seq {
+      let keys = Map.keys filesMap
+
+      for key in keys do
+        let mutable d = { name = key; files = [] }
+
+        for { path = path
+              name = name
+              size = size } in files do
+          if path.StartsWith key then
+            let f =
+              { path = path
+                name = name
+                size = size }
+
+            d <- { d with files = f :: d.files }
+
+        yield d
+    }
+
+  let calculateDirectorySize directory =
+    directory.files
+    |> Seq.map (fun f -> f.size)
+    |> Seq.sum
 
   type private DiscoverState = { path: string list; files: File list }
 

@@ -10,7 +10,8 @@ let ``Sum of directories with total size less than 100000`` (fileName: string, e
   let result =
     Shell.parseHistory fileName
     |> FileSystem.fromShellHistory
-    |> FileSystem.getDirectorySizes
+    |> FileSystem.getDirectories
+    |> Seq.map FileSystem.calculateDirectorySize
     |> Seq.filter (fun size -> size <= 100000)
     |> Seq.sum
 
