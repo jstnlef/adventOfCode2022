@@ -59,7 +59,7 @@ module RopeSim =
     seq { steps - 1 .. -1 .. 0 }
     |> Seq.fold (performStep deltaX deltaY) state
 
-  let simulate (actions: MoveAction seq) : SimState =
+  let simulate knots (actions: MoveAction seq) : SimState =
     let initial =
       { head = (0, 0)
         tail = (0, 0)
