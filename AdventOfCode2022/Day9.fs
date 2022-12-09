@@ -12,12 +12,11 @@ type MoveAction =
 type Position = int * int
 
 type SimState =
-  { head: Position
-    tail: Position
+  { knots: Position array
     positionsTailVisited: Position Set }
 
 module RopeSim =
-  let moveTail head tail : Position =
+  let moveKnot head tail : Position =
     let headX, headY = head
     let tailX, tailY = tail
 
@@ -27,26 +26,31 @@ module RopeSim =
     if abs deltaX <= 1 && abs deltaY <= 1 then
       tail
     elif abs deltaX > abs deltaY && deltaX > 0 then
-      headX - 1, headY
+      (headX - 1, headY)
     elif abs deltaX > abs deltaY && deltaX < 0 then
-      headX + 1, headY
+      (headX + 1, headY)
     elif abs deltaY > abs deltaX && deltaY > 0 then
-      headX, headY - 1
+      (headX, headY - 1)
+    elif abs deltaY > abs deltaX && deltaY < 0 then
+      (headX, headY + 1)
     else
-      headX, headY + 1
+      failwith "eh?"
 
   let performStep deltaX deltaY state _ =
-    let headX, headY = state.head
+    let headX, headY = state.knots[0]
 
     let newHead =
       (headX + deltaX, headY + deltaY)
 
-    let newTail = moveTail newHead state.tail
+    state.knots[ 0 ] <- newHead
 
-    { state with
-        head = newHead
-        tail = newTail
-        positionsTailVisited = Set.add newTail state.positionsTailVisited }
+    for i in seq { 0 .. state.knots.Length - 2 } do
+      let head, tail =
+        state.knots[i], state.knots[i + 1]
+
+      state.knots[ i + 1 ] <- moveKnot head tail
+
+    { state with positionsTailVisited = Set.add state.knots[state.knots.Length - 1] state.positionsTailVisited }
 
   let performMovement state action =
     let deltaX, deltaY, steps =
@@ -61,8 +65,10 @@ module RopeSim =
 
   let simulate knots (actions: MoveAction seq) : SimState =
     let initial =
-      { head = (0, 0)
-        tail = (0, 0)
+      { knots =
+          seq { 0 .. knots - 1 }
+          |> Seq.map (fun _ -> (0, 0))
+          |> Seq.toArray
         positionsTailVisited = Set.empty }
 
     Seq.fold performMovement initial actions
