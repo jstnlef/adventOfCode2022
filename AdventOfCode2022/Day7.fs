@@ -58,10 +58,14 @@ module FileSystem =
       files
       |> Seq.map (fun f -> f.path)
       |> Seq.maxBy (fun p -> p.Length)
+      |> (fun s -> s.Split(pathSeparator))
 
-    files
-    |> Seq.groupBy (fun f -> f.path)
-    |> Seq.map (fun (k, v) -> v |> Seq.map (fun f -> f.size) |> Seq.sum)
+    let filesMap =
+      files
+      |> Seq.groupBy (fun f -> f.path)
+      |> Map.ofSeq
+
+    Seq.empty
 
   type private DiscoverState = { path: string list; files: File list }
 
