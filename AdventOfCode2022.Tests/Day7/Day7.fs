@@ -4,13 +4,18 @@ open Xunit
 open Day7
 
 [<Theory>]
-[<InlineData("Day7/sample.txt", 95437)>]
-[<InlineData("Day7/input.txt", 1642503)>]
-let ``Sum of directories with total size less than 100000`` (fileName: string, expected: int) =
-  let result =
+[<InlineData("Day7/sample.txt", 4, 95437)>]
+[<InlineData("Day7/input.txt", 200, 1642503)>]
+let ``Sum of directories with total size less than 100000`` (fileName: string, totalDirectories: int, expected: int) =
+  let directories =
     Shell.parseHistory fileName
     |> FileSystem.fromShellHistory
     |> FileSystem.getDirectories
+
+  Assert.Equal(totalDirectories, (Seq.toArray directories).Length)
+
+  let result =
+    directories
     |> Seq.map FileSystem.calculateDirectorySize
     |> Seq.filter (fun size -> size <= 100000)
     |> Seq.sum

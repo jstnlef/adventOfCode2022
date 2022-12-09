@@ -16,13 +16,12 @@ module Shell =
   open System.Text.RegularExpressions
 
   let private commandRegex =
-    Regex("\$ ([a-z]+) *([\w.\.\/]*)")
+    Regex("\$ ([a-z]+) *(.+)")
 
   let private directoryRegex =
-    Regex("dir ([\w.\.\/]*)")
+    Regex("dir (.+)")
 
-  let private fileRegex =
-    Regex("(\d+) ([\w.\.\/]*)")
+  let private fileRegex = Regex("(\d+) (.+)")
 
   let private parseLine line : ShellEntry =
     let commandMatch = commandRegex.Match line
