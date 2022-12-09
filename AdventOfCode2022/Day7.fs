@@ -49,34 +49,25 @@ type File =
 
 type Directory = { name: string; files: File list }
 
-type FileSystem = File seq
+type FileSystem =
+  { directories: string list
+    files: File list }
 
 let pathSeparator = "->"
 
 module FileSystem =
-  let rec getDirectories (files: FileSystem) : Directory seq =
-    seq {
-      let keys =
-        files
-        |> Seq.groupBy (fun f -> f.path)
-        |> Seq.map fst
+  let calculateDirectorySizes (fileSystem: FileSystem) =
+    fileSystem.directories
+    |> Seq.map (fun d ->
+      fileSystem.files
+      |> Seq.filter (fun { path = path } -> path.StartsWith d)
+      |> Seq.map (fun f -> f.size))
+    |> Seq.map Seq.sum
 
-      for key in keys do
-        let mutable d = { name = key; files = [] }
-
-        let filesInDir =
-          Seq.filter (fun { path = path } -> path.StartsWith key) files
-
-        for f in filesInDir do
-          d <- { d with files = f :: d.files }
-
-        yield d
-    }
-
-  let calculateDirectorySize directory =
-    directory.files |> Seq.sumBy (fun f -> f.size)
-
-  type private DiscoverState = { path: string list; files: File list }
+  type private DiscoverState =
+    { path: string list
+      files: File list
+      directories: string list }
 
   let private generatePath pathParts =
     pathParts
@@ -98,12 +89,21 @@ module FileSystem =
           size = size }
 
       { state with files = f :: state.files }
-    | ShellEntry.Directory _ -> state
+    | ShellEntry.Directory name ->
+      { state with
+          directories =
+            generatePath (name :: state.path)
+            :: state.directories }
     | ShellEntry.Command c -> processCommand state c
 
   let fromShellHistory (history: ShellHistory) : FileSystem =
-    let state = { path = []; files = [] }
+    let state =
+      { path = []
+        files = []
+        directories = [ "/" ] }
 
     history
     |> Seq.fold discoverFileSystem state
-    |> fun processed -> processed.files
+    |> fun processed ->
+         { directories = processed.directories
+           files = processed.files }

@@ -7,16 +7,15 @@ open Day7
 [<InlineData("Day7/sample.txt", 4, 95437)>]
 [<InlineData("Day7/input.txt", 200, 1642503)>]
 let ``Sum of directories with total size less than 100000`` (fileName: string, totalDirectories: int, expected: int) =
-  let directories =
+  let fileSystem =
     Shell.parseHistory fileName
     |> FileSystem.fromShellHistory
-    |> FileSystem.getDirectories
 
-  Assert.Equal(totalDirectories, (Seq.toArray directories).Length)
+  Assert.Equal(totalDirectories, fileSystem.directories.Length)
 
   let result =
-    directories
-    |> Seq.map FileSystem.calculateDirectorySize
+    fileSystem
+    |> FileSystem.calculateDirectorySizes
     |> Seq.filter (fun size -> size <= 100000)
     |> Seq.sum
 
@@ -24,13 +23,12 @@ let ``Sum of directories with total size less than 100000`` (fileName: string, t
 
 [<Theory>]
 [<InlineData("Day7/sample.txt", 24933642)>]
-[<InlineData("Day7/input.txt", -1)>]
+[<InlineData("Day7/input.txt", 6999588)>]
 let ``Total size of the directory to remove which frees up enough space`` (fileName: string, expected: int) =
   let sizes =
     Shell.parseHistory fileName
     |> FileSystem.fromShellHistory
-    |> FileSystem.getDirectories
-    |> Seq.map FileSystem.calculateDirectorySize
+    |> FileSystem.calculateDirectorySizes
 
   let unusedSpace = 70000000 - Seq.max sizes
 
