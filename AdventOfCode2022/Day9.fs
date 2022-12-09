@@ -1,5 +1,6 @@
 module Day9
 
+open System
 open System.IO
 open Microsoft.FSharp.Collections
 
@@ -23,26 +24,18 @@ module RopeSim =
     let deltaX = headX - tailX
     let deltaY = headY - tailY
 
-    if abs deltaX <= 1 && abs deltaY <= 1 then
+    let absDeltaX = abs deltaX
+    let absDeltaY = abs deltaY
+
+    if absDeltaX <= 1 && absDeltaY <= 1 then
       tail
-    elif abs deltaX > abs deltaY && deltaX > 0 then
-      (headX - 1, headY)
-    elif abs deltaX > abs deltaY && deltaX < 0 then
-      (headX + 1, headY)
-    elif abs deltaY > abs deltaX && deltaY > 0 then
-      (headX, headY - 1)
-    elif abs deltaY > abs deltaX && deltaY < 0 then
-      (headX, headY + 1)
     else
-      failwith "eh?"
+      (tailX + Math.Sign(deltaX), tailY + Math.Sign(deltaY))
 
   let performStep deltaX deltaY state _ =
     let headX, headY = state.knots[0]
 
-    let newHead =
-      (headX + deltaX, headY + deltaY)
-
-    state.knots[ 0 ] <- newHead
+    state.knots[ 0 ] <- (headX + deltaX, headY + deltaY)
 
     for i in seq { 0 .. state.knots.Length - 2 } do
       let head, tail =

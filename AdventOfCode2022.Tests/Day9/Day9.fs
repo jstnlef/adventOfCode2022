@@ -18,7 +18,7 @@ let ``Number of positions the tail visits after simulating 2 knots`` (fileName: 
 [<Theory>]
 [<InlineData("Day9/sample.txt", 1)>]
 [<InlineData("Day9/largerSample.txt", 36)>]
-[<InlineData("Day9/input.txt", -1)>]
+[<InlineData("Day9/input.txt", 2303)>]
 let ``Number of positions the tail visits after simulating 10 knots`` (fileName: string, expected: int) =
   let result =
     RopeSim.parse fileName
