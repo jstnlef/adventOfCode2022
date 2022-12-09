@@ -17,22 +17,16 @@ type SimState =
     positionsTailVisited: Position Set }
 
 module RopeSim =
-  let moveKnot head tail : Position =
-    let headX, headY = head
-    let tailX, tailY = tail
-
+  let private moveTailKnotRelativeToHead (headX, headY) (tailX, tailY) : Position =
     let deltaX = headX - tailX
     let deltaY = headY - tailY
 
-    let absDeltaX = abs deltaX
-    let absDeltaY = abs deltaY
-
-    if absDeltaX <= 1 && absDeltaY <= 1 then
-      tail
+    if abs deltaX <= 1 && abs deltaY <= 1 then
+      (tailX, tailY)
     else
       (tailX + Math.Sign(deltaX), tailY + Math.Sign(deltaY))
 
-  let performStep deltaX deltaY state _ =
+  let private performStep (deltaX, deltaY) state _ =
     let headX, headY = state.knots[0]
 
     state.knots[ 0 ] <- (headX + deltaX, headY + deltaY)
@@ -41,20 +35,20 @@ module RopeSim =
       let head, tail =
         state.knots[i], state.knots[i + 1]
 
-      state.knots[ i + 1 ] <- moveKnot head tail
+      state.knots[ i + 1 ] <- moveTailKnotRelativeToHead head tail
 
     { state with positionsTailVisited = Set.add state.knots[state.knots.Length - 1] state.positionsTailVisited }
 
-  let performMovement state action =
-    let deltaX, deltaY, steps =
+  let private performMovement state action =
+    let delta, steps =
       match action with
-      | Up n -> (0, 1, n)
-      | Down n -> (0, -1, n)
-      | Right n -> (1, 0, n)
-      | Left n -> (-1, 0, n)
+      | Up n -> (0, 1), n
+      | Down n -> (0, -1), n
+      | Right n -> (1, 0), n
+      | Left n -> (-1, 0), n
 
     seq { steps - 1 .. -1 .. 0 }
-    |> Seq.fold (performStep deltaX deltaY) state
+    |> Seq.fold (performStep delta) state
 
   let simulate knots (actions: MoveAction seq) : SimState =
     let initial =
