@@ -18,14 +18,22 @@ let ``Sum of directories with total size less than 100000`` (fileName: string, e
   Assert.Equal(expected, result)
 
 [<Theory>]
-[<InlineData("Day7/sample.txt", -1)>]
+[<InlineData("Day7/sample.txt", 24933642)>]
 [<InlineData("Day7/input.txt", -1)>]
-let ``Part 2`` (fileName: string, expected: int) =
-  // let result =
-  //   parseSuppliesAndProcedures fileName
-  //   ||> Supplies.rearrange Step.performWithCrateMover9000
-  //   |> Supplies.topCratesPerStack
-  let result = -1
+let ``Total size of the directory to remove which frees up enough space`` (fileName: string, expected: int) =
+  let sizes =
+    Shell.parseHistory fileName
+    |> FileSystem.fromShellHistory
+    |> FileSystem.getDirectories
+    |> Seq.map FileSystem.calculateDirectorySize
+
+  let unusedSpace = 70000000 - Seq.max sizes
+
+  let result =
+    sizes
+    |> Seq.filter (fun size -> unusedSpace + size >= 30000000)
+    |> Seq.min
+
   Assert.Equal(expected, result)
 
 [<Fact>]
@@ -59,80 +67,3 @@ let ``parsing input creates ShellHistory`` () =
     Shell.parseHistory "Day7/sample.txt" |> Seq.toList
 
   Assert.True((expected = result))
-
-// [<Fact>]
-// let ``calculateSize on file returns size`` () =
-//   let file =
-//     FileTree.File
-//       { name = "test"
-//         size = 1099
-//         parent = ref None }
-//
-//   let size = FileSystem.size file
-//   Assert.Equal(1099, size)
-//
-// [<Fact>]
-// let ``calculateSize on directory recursively calculates size`` () =
-//   let file1 =
-//     File
-//       { name = "f1"
-//         size = 1
-//         parent = ref None }
-//
-//   let file2 =
-//     File
-//       { name = "f2"
-//         size = 2
-//         parent = ref None }
-//
-//   let file3 =
-//     File
-//       { name = "f3"
-//         size = 3
-//         parent = ref None }
-//
-//   let dir =
-//     Directory
-//       { name = "d1"
-//         files = [ file1; file2; file3 ]
-//         parent = ref None }
-//
-//   let root =
-//     Directory
-//       { name = "/"
-//         files = [ dir; file3 ]
-//         parent = ref None }
-//
-//   dir |> FileTree.updateWithParent (Some root)
-//   let p = dir |> FileTree.getParent
-//
-//   let size = FileSystem.size root
-//   Assert.Equal(9, size)
-
-// [<Fact>]
-// let ``calculateSize on entire filesystem`` () =
-//   let fileSystem =
-//     FileTree.Directory
-//       { name = "/"
-//         files = [ FileTree.Directory(
-//           name = "a",
-//           files =
-//             [ FileTree.Directory(name = "e", files = [ FileTree.File(name = "i", size = 584) ])
-//               FileTree.File(name = "f", size = 29116)
-//               FileTree.File(name = "g", size = 2557)
-//               FileTree.File(name = "h.lst", size = 62596) ]
-//         )
-//         FileTree.File(name = "b.txt", size = 14848514)
-//         FileTree.File(name = "c.dat", size = 8504156)
-//         FileTree.Directory(
-//           name = "d",
-//           files =
-//             [ FileTree.File(name = "j", size = 4060174)
-//               FileTree.File(name = "d.log", size = 8033020)
-//               FileTree.File(name = "d.ext", size = 5626152)
-//               FileTree.File(name = "k", size = 7214296) ]
-//         ) ]
-//     }
-//
-//   let size = FileSystem.size fileSystem
-//   Assert.Equal(48381165, size)

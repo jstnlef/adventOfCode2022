@@ -56,35 +56,26 @@ let pathSeparator = "->"
 
 module FileSystem =
   let rec getDirectories (files: FileSystem) : Directory seq =
-    let filesMap =
-      files
-      |> Seq.groupBy (fun f -> f.path)
-      |> Map.ofSeq
-
     seq {
-      let keys = Map.keys filesMap
+      let keys =
+        files
+        |> Seq.groupBy (fun f -> f.path)
+        |> Seq.map fst
 
       for key in keys do
         let mutable d = { name = key; files = [] }
 
-        for { path = path
-              name = name
-              size = size } in files do
-          if path.StartsWith key then
-            let f =
-              { path = path
-                name = name
-                size = size }
+        let filesInDir =
+          Seq.filter (fun { path = path } -> path.StartsWith key) files
 
-            d <- { d with files = f :: d.files }
+        for f in filesInDir do
+          d <- { d with files = f :: d.files }
 
         yield d
     }
 
   let calculateDirectorySize directory =
-    directory.files
-    |> Seq.map (fun f -> f.size)
-    |> Seq.sum
+    directory.files |> Seq.sumBy (fun f -> f.size)
 
   type private DiscoverState = { path: string list; files: File list }
 
