@@ -43,7 +43,7 @@ module Device =
     let line = device.pixels[lineIndex] + pixel
     { device with pixels = Array.updateAt lineIndex line device.pixels }
 
-  let private executeNextInstruction device (program: Program) : Device =
+  let private executeNextInstruction (program: Program) (device: Device) : Device =
     match program[device.instruction] with
     | AddX n ->
       { device with
@@ -55,36 +55,28 @@ module Device =
           cycle = device.cycle + 1
           instruction = device.instruction + 1 }
 
-  let private runCycle (device: Device) (program: Program) : Device =
+  let private runCycle (program: Program) (device: Device) : Device =
     let delay, instr = device.delay
     let updatedDelay = delay - 1
 
-    let deviceWithPixelRendered = renderPixel device
-
     if updatedDelay > 0 then
-      { deviceWithPixelRendered with
-          cycle = deviceWithPixelRendered.cycle + 1
+      { device with
+          cycle = device.cycle + 1
           delay = updatedDelay, instr }
     else
-      let _, delayedInstr = deviceWithPixelRendered.delay
+      let _, delayedInstr = device.delay
 
       match delayedInstr with
       | AddX n ->
-        { deviceWithPixelRendered with
-            cycle = deviceWithPixelRendered.cycle + 1
-            X = deviceWithPixelRendered.X + n
+        { device with
+            cycle = device.cycle + 1
+            X = device.X + n
             delay = 0, Noop }
-      | Noop -> executeNextInstruction deviceWithPixelRendered program
+      | Noop -> executeNextInstruction program device
 
-  let runUntil cycle device program : Device =
-    seq {
-      let mutable device = device
-
-      while device.cycle < cycle do
-        device <- runCycle device program
-        yield device
-    }
-    |> Seq.last
+  let runUntil cycle program device : Device =
+    seq { device.cycle .. cycle - 1 }
+    |> Seq.fold (fun d _ -> d |> runCycle program |> renderPixel) (renderPixel device)
 
   let init () =
     { cycle = 1
