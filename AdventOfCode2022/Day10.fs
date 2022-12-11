@@ -23,9 +23,25 @@ type Device =
   { cycle: int
     X: int
     delay: int * Instruction
-    instruction: int }
+    instruction: int
+    pixels: string array }
+
+let litPixel = "#"
+let unlitPixel = "."
 
 module Device =
+  let private renderPixel device : Device =
+    let modCycle = (device.cycle - 1) % 40
+
+    let pixel =
+      if modCycle >= device.X - 1 && modCycle <= device.X + 1 then
+        litPixel
+      else
+        unlitPixel
+
+    let lineIndex = (device.cycle - 1) / 40
+    device.pixels[ lineIndex ] <- device.pixels[lineIndex] + pixel
+    device
 
   let private executeNextInstruction device (program: Program) : Device =
     match program[device.instruction] with
@@ -43,36 +59,38 @@ module Device =
     let delay, instr = device.delay
     let updatedDelay = delay - 1
 
+    let deviceWithPixelRendered = renderPixel device
+
     if updatedDelay > 0 then
-      { device with
-          cycle = device.cycle + 1
+      { deviceWithPixelRendered with
+          cycle = deviceWithPixelRendered.cycle + 1
           delay = updatedDelay, instr }
     else
-      let _, delayedInstr = device.delay
+      let _, delayedInstr = deviceWithPixelRendered.delay
 
       match delayedInstr with
       | AddX n ->
-        { device with
-            cycle = device.cycle + 1
-            X = device.X + n
+        { deviceWithPixelRendered with
+            cycle = deviceWithPixelRendered.cycle + 1
+            X = deviceWithPixelRendered.X + n
             delay = 0, Noop }
-      | Noop -> executeNextInstruction device program
-
+      | Noop -> executeNextInstruction deviceWithPixelRendered program
 
   let runUntil cycle device program : Device =
     seq {
       let mutable device = device
 
-      for _ in seq { device.cycle .. cycle - 1 } do
+      while device.cycle < cycle do
         device <- runCycle device program
         yield device
     }
     |> Seq.last
 
-  let init =
+  let init () =
     { cycle = 1
       X = 1
       delay = 0, Noop
-      instruction = 0 }
+      instruction = 0
+      pixels = [| ""; ""; ""; ""; ""; "" |] }
 
   let signalStrength (device: Device) : int = device.cycle * device.X
