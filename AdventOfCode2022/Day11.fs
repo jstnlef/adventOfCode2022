@@ -2,17 +2,19 @@ module Day11
 
 open System.IO
 open System.Text.RegularExpressions
+open Microsoft.FSharp.Core
 
-type Item = int
+type MonkeyId = int
+type Item = uint64
 
 type Monkey =
-  { id: int
+  { id: MonkeyId
     items: Item list
-    operation: int -> int
-    test: int -> bool
-    ifTrueMonkey: int
-    ifFalseMonkey: int
-    inspected: int }
+    operation: Item -> Item
+    divisibleTest: uint64
+    ifTrueMonkey: MonkeyId
+    ifFalseMonkey: MonkeyId
+    itemsInspected: uint64 }
 
 module Monkey =
   let didThrow monkey =
@@ -22,58 +24,57 @@ module Monkey =
     { monkey with items = monkey.items @ [ item ] }
 
   let inspectedItem monkey =
-    { monkey with inspected = monkey.inspected + 1 }
+    { monkey with itemsInspected = monkey.itemsInspected + 1UL }
 
 type Quagmire = { monkeys: Monkey array }
 
 module Quagmire =
-  let doMonkeyBusiness monkeyId quagmire : Quagmire =
-    let handleItem quagmire item : Quagmire =
-      let monkey = quagmire.monkeys[monkeyId]
-      let newWorry = (monkey.operation item) / 3
-      let throwingMonkey = monkey |> Monkey.inspectedItem |> Monkey.didThrow
+  let monkeyThrowsItem thrower catcherId item quagmire =
+    let catcher = quagmire.monkeys[catcherId]
 
-      if monkey.test newWorry then
-        let thrownToMonkey =
-          quagmire.monkeys[monkey.ifTrueMonkey] |> Monkey.throwTo newWorry
+    let postThrowMonkeys =
+      quagmire.monkeys
+      |> Array.updateAt thrower.id (thrower |> Monkey.didThrow)
+      |> Array.updateAt catcherId (catcher |> Monkey.throwTo item)
 
-        let updated =
-          quagmire.monkeys
-          |> Array.updateAt monkey.id throwingMonkey
-          |> Array.updateAt monkey.ifTrueMonkey thrownToMonkey
+    { quagmire with monkeys = postThrowMonkeys }
 
-        { quagmire with monkeys = updated }
+  let handleItem manageableWorry monkeyId quagmire item : Quagmire =
+    let monkey = quagmire.monkeys[monkeyId] |> Monkey.inspectedItem
+
+    let newWorry =
+      if manageableWorry then
+        (monkey.operation item) / 3UL
       else
-        let thrownToMonkey =
-          quagmire.monkeys[monkey.ifFalseMonkey] |> Monkey.throwTo newWorry
+        (monkey.operation item) % monkey.divisibleTest
 
-        let updated =
-          quagmire.monkeys
-          |> Array.updateAt monkey.id throwingMonkey
-          |> Array.updateAt monkey.ifFalseMonkey thrownToMonkey
+    if (newWorry % monkey.divisibleTest) = 0UL then
+      monkeyThrowsItem monkey monkey.ifTrueMonkey newWorry quagmire
+    else
+      monkeyThrowsItem monkey monkey.ifFalseMonkey newWorry quagmire
 
-        { quagmire with monkeys = updated }
+  let doMonkeyBusiness manageableWorry monkeyId quagmire : Quagmire =
+    quagmire.monkeys[monkeyId].items
+    |> List.fold (handleItem manageableWorry monkeyId) quagmire
 
-    quagmire.monkeys[monkeyId].items |> List.fold handleItem quagmire
-
-  let runRound quagmire : Quagmire =
+  let runRound manageableWorry quagmire : Quagmire =
     seq { 0 .. quagmire.monkeys.Length - 1 }
-    |> Seq.fold (fun q id -> doMonkeyBusiness id q) quagmire
+    |> Seq.fold (fun q id -> doMonkeyBusiness manageableWorry id q) quagmire
 
-  let executeShenanigans rounds quagmire : Quagmire =
-    seq { 0 .. rounds - 1 } |> Seq.fold (fun q _ -> runRound q) quagmire
+  let executeShenanigans rounds manageableWorry quagmire : Quagmire =
+    seq { 0 .. rounds - 1 }
+    |> Seq.fold (fun q _ -> runRound manageableWorry q) quagmire
 
-  let totalMonkeyBusiness quagmire : int =
+  let totalMonkeyBusiness quagmire : uint64 =
     quagmire.monkeys
-    |> Seq.map (fun m -> m.inspected)
+    |> Seq.map (fun m -> m.itemsInspected)
     |> Seq.sortDescending
     |> Seq.take 2
     |> Seq.reduce (*)
 
   let parse filename : Quagmire =
-    let isDivisible d n = (n % d) = 0
-    let operation op n old : int = op old n
-    let specOp op old : int = op old old
+    let operation op n old = op old n
+    let specOp op old = op old old
 
     let monkeyRegex =
       Regex(
@@ -92,17 +93,17 @@ module Quagmire =
 
         match operandStr with
         | "old" -> specOp op
-        | n -> operation op (int n)
+        | n -> operation op (uint64 n)
 
-      let items = m.Groups[ "items" ].Value.Split(", ") |> Seq.map int |> Seq.toList
+      let items = m.Groups[ "items" ].Value.Split(", ") |> Seq.map uint64 |> Seq.toList
 
       { id = (int m.Groups["id"].Value)
         items = items
-        test = isDivisible (int m.Groups["divisible"].Value)
+        divisibleTest = uint64 m.Groups["divisible"].Value
         operation = parseOp m.Groups["op"].Value m.Groups["n"].Value
         ifTrueMonkey = int m.Groups["ifTrue"].Value
         ifFalseMonkey = int m.Groups["ifFalse"].Value
-        inspected = 0 }
+        itemsInspected = 0UL }
 
     let monkeys =
       File.ReadAllText filename

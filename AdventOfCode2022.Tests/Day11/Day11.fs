@@ -9,18 +9,22 @@ open Day11
 let ``Level of monkey business after 20 rounds of stuff-slinging simian shenanigans``
   (
     fileName: string,
-    expected: int
+    expected: uint64
   ) =
   let result =
     Quagmire.parse fileName
-    |> Quagmire.executeShenanigans 20
+    |> Quagmire.executeShenanigans 20 true
     |> Quagmire.totalMonkeyBusiness
 
   Assert.Equal(expected, result)
 
 [<Theory>]
-[<InlineData("Day11/sample.txt", 0)>]
+[<InlineData("Day11/sample.txt", 2713310158L)>]
 [<InlineData("Day11/input.txt", 0)>]
-let ``Part 2`` (fileName: string, expected: int) =
-  let result = - 1
+let ``Level of monkey business after 10000 rounds`` (fileName: string, expected: uint64) =
+  let result =
+    Quagmire.parse fileName
+    |> Quagmire.executeShenanigans 10000 false
+    |> Quagmire.totalMonkeyBusiness
+
   Assert.Equal(expected, result)
