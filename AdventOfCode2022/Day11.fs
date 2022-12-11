@@ -39,31 +39,26 @@ module Quagmire =
 
     { quagmire with monkeys = postThrowMonkeys }
 
-  let handleItem manageableWorry monkeyId quagmire item : Quagmire =
+  let handleItem worryCalc monkeyId quagmire item : Quagmire =
     let monkey = quagmire.monkeys[monkeyId] |> Monkey.inspectedItem
 
-    let newWorry =
-      if manageableWorry then
-        (monkey.operation item) / 3UL
-      else
-        (monkey.operation item) % monkey.divisibleTest
+    let newWorry = worryCalc item monkey
 
     if (newWorry % monkey.divisibleTest) = 0UL then
       monkeyThrowsItem monkey monkey.ifTrueMonkey newWorry quagmire
     else
       monkeyThrowsItem monkey monkey.ifFalseMonkey newWorry quagmire
 
-  let doMonkeyBusiness manageableWorry monkeyId quagmire : Quagmire =
+  let doMonkeyBusiness worryCalc monkeyId quagmire : Quagmire =
     quagmire.monkeys[monkeyId].items
-    |> List.fold (handleItem manageableWorry monkeyId) quagmire
+    |> List.fold (handleItem worryCalc monkeyId) quagmire
 
-  let runRound manageableWorry quagmire : Quagmire =
+  let runRound worryCalc quagmire : Quagmire =
     seq { 0 .. quagmire.monkeys.Length - 1 }
-    |> Seq.fold (fun q id -> doMonkeyBusiness manageableWorry id q) quagmire
+    |> Seq.fold (fun q id -> doMonkeyBusiness worryCalc id q) quagmire
 
-  let executeShenanigans rounds manageableWorry quagmire : Quagmire =
-    seq { 0 .. rounds - 1 }
-    |> Seq.fold (fun q _ -> runRound manageableWorry q) quagmire
+  let executeShenanigans rounds worryCalc quagmire : Quagmire =
+    seq { 0 .. rounds - 1 } |> Seq.fold (fun q _ -> runRound worryCalc q) quagmire
 
   let totalMonkeyBusiness quagmire : uint64 =
     quagmire.monkeys
