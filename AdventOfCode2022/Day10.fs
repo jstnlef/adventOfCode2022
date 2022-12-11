@@ -40,8 +40,8 @@ module Device =
         unlitPixel
 
     let lineIndex = (device.cycle - 1) / 40
-    device.pixels[ lineIndex ] <- device.pixels[lineIndex] + pixel
-    device
+    let line = device.pixels[lineIndex] + pixel
+    { device with pixels = Array.updateAt lineIndex line device.pixels }
 
   let private executeNextInstruction device (program: Program) : Device =
     match program[device.instruction] with
@@ -91,6 +91,6 @@ module Device =
       X = 1
       delay = 0, Noop
       instruction = 0
-      pixels = [| ""; ""; ""; ""; ""; "" |] }
+      pixels = Array.create 6 "" }
 
   let signalStrength (device: Device) : int = device.cycle * device.X
