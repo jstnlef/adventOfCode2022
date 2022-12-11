@@ -17,48 +17,52 @@ type Monkey =
     itemsInspected: uint64 }
 
 module Monkey =
-  let didThrow monkey =
+  let withItemThrown monkey =
     { monkey with items = List.tail monkey.items }
 
-  let throwTo item monkey =
+  let withItemCaught item monkey =
     { monkey with items = monkey.items @ [ item ] }
 
-  let inspectedItem monkey =
+  let incrementItemInspected monkey =
     { monkey with itemsInspected = monkey.itemsInspected + 1UL }
 
 type Quagmire = { monkeys: Monkey array }
 
 module Quagmire =
-  let monkeyThrowsItem thrower catcherId item quagmire =
+  let private monkeyThrowsItem thrower item catcherId quagmire =
     let catcher = quagmire.monkeys[catcherId]
 
     let postThrowMonkeys =
       quagmire.monkeys
-      |> Array.updateAt thrower.id (thrower |> Monkey.didThrow)
-      |> Array.updateAt catcherId (catcher |> Monkey.throwTo item)
+      |> Array.updateAt thrower.id (thrower |> Monkey.withItemThrown)
+      |> Array.updateAt catcherId (catcher |> Monkey.withItemCaught item)
 
     { quagmire with monkeys = postThrowMonkeys }
 
-  let handleItem worryCalc monkeyId quagmire item : Quagmire =
-    let monkey = quagmire.monkeys[monkeyId] |> Monkey.inspectedItem
+  let private performShenanigan worryCalc monkeyId quagmire item : Quagmire =
+    let monkey = quagmire.monkeys[monkeyId] |> Monkey.incrementItemInspected
+    let itemWithNewWorry = worryCalc item monkey
+    let throwItemWithNewWorryToMonkey = monkeyThrowsItem monkey itemWithNewWorry
 
-    let newWorry = worryCalc item monkey
+    quagmire
+    |> if (itemWithNewWorry % monkey.divisibleTest) = 0UL then
+         throwItemWithNewWorryToMonkey monkey.ifTrueMonkey
+       else
+         throwItemWithNewWorryToMonkey monkey.ifFalseMonkey
 
-    if (newWorry % monkey.divisibleTest) = 0UL then
-      monkeyThrowsItem monkey monkey.ifTrueMonkey newWorry quagmire
-    else
-      monkeyThrowsItem monkey monkey.ifFalseMonkey newWorry quagmire
-
-  let doMonkeyBusiness worryCalc monkeyId quagmire : Quagmire =
+  let private doMonkeyBusiness worryCalc quagmire monkeyId : Quagmire =
     quagmire.monkeys[monkeyId].items
-    |> List.fold (handleItem worryCalc monkeyId) quagmire
+    |> List.fold (performShenanigan worryCalc monkeyId) quagmire
 
   let runRound worryCalc quagmire : Quagmire =
+    let doMonkeyBusinessWithWorry = doMonkeyBusiness worryCalc
+
     seq { 0 .. quagmire.monkeys.Length - 1 }
-    |> Seq.fold (fun q id -> doMonkeyBusiness worryCalc id q) quagmire
+    |> Seq.fold doMonkeyBusinessWithWorry quagmire
 
   let executeShenanigans rounds worryCalc quagmire : Quagmire =
-    seq { 0 .. rounds - 1 } |> Seq.fold (fun q _ -> runRound worryCalc q) quagmire
+    let runRoundWithWorry q _ = runRound worryCalc q
+    seq { 0 .. rounds - 1 } |> Seq.fold runRoundWithWorry quagmire
 
   let totalMonkeyBusiness quagmire : uint64 =
     quagmire.monkeys
