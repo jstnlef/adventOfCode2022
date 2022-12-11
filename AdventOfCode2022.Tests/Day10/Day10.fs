@@ -49,9 +49,7 @@ type Day10(output: ITestOutputHelper) =
 #....####.#....#..#.#....###...##..####.")>]
   member _.``Sprite Rendering``(fileName: string, expected: string) =
     let program = Program.parse fileName
-    let device = Device.runUntil 240 program (Device.init ())
-
-    let result = device |> (fun d -> String.concat "\n" d.pixels)
+    let result = Device.runUntil 240 program (Device.init ()) |> Device.renderPixels
 
     output.WriteLine("Pixel output:")
     output.WriteLine(result)

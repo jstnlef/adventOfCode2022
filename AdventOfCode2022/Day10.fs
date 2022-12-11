@@ -44,39 +44,31 @@ module Device =
     { device with pixels = Array.updateAt lineIndex line device.pixels }
 
   let private executeNextInstruction (program: Program) (device: Device) : Device =
-    match program[device.instruction] with
-    | AddX n ->
-      { device with
-          cycle = device.cycle + 1
-          delay = 1, AddX n
-          instruction = device.instruction + 1 }
-    | Noop ->
-      { device with
-          cycle = device.cycle + 1
-          instruction = device.instruction + 1 }
+    let readInstrDevice =
+      match program[device.instruction] with
+      | AddX n -> { device with delay = 1, AddX n }
+      | Noop -> device
+
+    { readInstrDevice with instruction = device.instruction + 1 }
 
   let private runCycle (program: Program) (device: Device) : Device =
     let delay, instr = device.delay
     let updatedDelay = delay - 1
 
     if updatedDelay > 0 then
-      { device with
-          cycle = device.cycle + 1
-          delay = updatedDelay, instr }
+      { device with delay = updatedDelay, instr }
     else
       let _, delayedInstr = device.delay
 
       match delayedInstr with
       | AddX n ->
         { device with
-            cycle = device.cycle + 1
             X = device.X + n
             delay = 0, Noop }
       | Noop -> executeNextInstruction program device
 
-  let runUntil cycle program device : Device =
-    seq { device.cycle .. cycle - 1 }
-    |> Seq.fold (fun d _ -> d |> runCycle program |> renderPixel) (renderPixel device)
+  let updateCycle device =
+    { device with cycle = device.cycle + 1 }
 
   let init () =
     { cycle = 1
@@ -85,4 +77,12 @@ module Device =
       instruction = 0
       pixels = Array.create 6 "" }
 
+  let runUntil cycle program device : Device =
+    let runCurrentCycle = runCycle program
+
+    seq { device.cycle .. cycle - 1 }
+    |> Seq.fold (fun d _ -> d |> runCurrentCycle |> updateCycle |> renderPixel) (renderPixel device)
+
   let signalStrength (device: Device) : int = device.cycle * device.X
+
+  let renderPixels device = String.concat "\n" device.pixels
