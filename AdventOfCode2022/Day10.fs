@@ -26,18 +26,15 @@ type Device =
     instruction: int
     pixels: string array }
 
-let litPixel = "#"
-let unlitPixel = "."
-
 module Device =
   let private renderPixel device : Device =
     let modCycle = (device.cycle - 1) % 40
 
     let pixel =
       if modCycle >= device.X - 1 && modCycle <= device.X + 1 then
-        litPixel
+        "#"
       else
-        unlitPixel
+        "."
 
     let lineIndex = (device.cycle - 1) / 40
     let line = device.pixels[lineIndex] + pixel
@@ -46,7 +43,7 @@ module Device =
   let private executeNextInstruction (program: Program) (device: Device) : Device =
     let readInstrDevice =
       match program[device.instruction] with
-      | AddX n -> { device with delay = 1, AddX n }
+      | AddX _ as inst -> { device with delay = 1, inst }
       | Noop -> device
 
     { readInstrDevice with instruction = device.instruction + 1 }
@@ -67,7 +64,7 @@ module Device =
             delay = 0, Noop }
       | Noop -> executeNextInstruction program device
 
-  let updateCycle device =
+  let private updateCycle device =
     { device with cycle = device.cycle + 1 }
 
   let init () =
@@ -78,10 +75,10 @@ module Device =
       pixels = Array.create 6 "" }
 
   let runUntil cycle program device : Device =
-    let runCurrentCycle = runCycle program
+    let runCycle = (runCycle program) >> updateCycle
 
     seq { device.cycle .. cycle - 1 }
-    |> Seq.fold (fun d _ -> d |> runCurrentCycle |> updateCycle |> renderPixel) (renderPixel device)
+    |> Seq.fold (fun d _ -> d |> runCycle |> renderPixel) (renderPixel device)
 
   let signalStrength (device: Device) : int = device.cycle * device.X
 
