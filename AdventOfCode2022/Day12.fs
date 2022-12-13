@@ -1,5 +1,6 @@
 module Day12
 
+open System.Collections.Generic
 open System.IO
 
 type Position =
@@ -15,7 +16,7 @@ module HeightMap =
     let currentPosition = heightMap[i][j]
 
     let findNeighbor i j : (int * int) option =
-      if i < 0 || j < 0 || i >= heightMap.Length || j >= heightMap.Length then
+      if i < 0 || j < 0 || i >= heightMap.Length || j >= heightMap[0].Length then
         None
       else
         let newPosition = heightMap[i][j]
@@ -33,7 +34,7 @@ module HeightMap =
     let right = findNeighbor i (j + 1)
     [ up; down; left; right ] |> List.collect Option.toList
 
-  let private findStartIndexes (heightMap: HeightMap) : PositionIndex =
+  let private findStartPositionIndex (heightMap: HeightMap) : PositionIndex =
     let size = heightMap.Length
 
     seq {
@@ -44,32 +45,32 @@ module HeightMap =
     |> Seq.find (fun (i, j) -> heightMap[i][j] = Start)
 
   let pathToGoal (heightMap: HeightMap) : PositionIndex seq =
-    let rec search
-      (considered: PositionIndex Set)
-      (neighbors: PositionIndex list)
-      (path: PositionIndex list)
-      : PositionIndex list =
-      if List.isEmpty neighbors then
-        path
-      else
-        let posIndex = List.head neighbors
-        let position = posIndex |> (fun (i, j) -> heightMap[i][j])
+    let start = findStartPositionIndex heightMap
+    let frontier = Queue<PositionIndex>()
+    frontier.Enqueue(start)
 
-        if position = BestSignal then
-          posIndex :: path
-        elif considered |> Set.contains posIndex then
-          search considered (List.tail neighbors) path
-        else
-          let newConsidered = Set.add posIndex considered
+    let reached = Dictionary<PositionIndex, PositionIndex option>()
+    reached[start] <- None
 
-          let newNeighbors =
-            (List.tail neighbors @ (findNeighbors posIndex heightMap)) |> List.distinct
+    seq {
+      let mutable endPos = None
 
-          search newConsidered newNeighbors (posIndex :: path)
+      while frontier.Count > 0 do
+        let current = frontier.Dequeue()
 
-    (search Set.empty [ findStartIndexes heightMap ] List.empty)
-    |> List.rev
-    |> List.toSeq
+        if heightMap[fst current][snd current] = BestSignal then
+          endPos <- Some current
+
+        for next in (findNeighbors current heightMap) do
+          if not (reached.ContainsKey(next)) then
+            frontier.Enqueue(next)
+            reached[next] <- Some current
+
+      while endPos.IsSome do
+        yield endPos.Value
+        endPos <- reached[endPos.Value]
+    }
+    |> Seq.rev
 
   let shortestStepsToGoal heightmap : int = heightmap |> pathToGoal |> Seq.length
 
