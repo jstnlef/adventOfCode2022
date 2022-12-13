@@ -23,8 +23,8 @@ module HeightMap =
 
         match currentPosition, newPosition with
         | Height currentHeight, Height newHeight -> if newHeight <= currentHeight + 1 then Some(i, j) else None
-        | Start, _ -> Some(i, j)
-        | _, BestSignal -> Some(i, j)
+        | Start, Height newHeight -> if newHeight <= 1 then Some(i, j) else None
+        | Height currentHeight, BestSignal -> if currentHeight >= 25 then Some(i, j) else None
         | _ -> None
 
 
@@ -49,12 +49,11 @@ module HeightMap =
     let frontier = Queue<PositionIndex>()
     frontier.Enqueue(start)
 
-    let reached = Dictionary<PositionIndex, PositionIndex option>()
-    reached[start] <- None
+    let cameFrom = Dictionary<PositionIndex, PositionIndex option>()
+    cameFrom[start] <- None
+    let mutable endPos = None
 
     seq {
-      let mutable endPos = None
-
       while frontier.Count > 0 do
         let current = frontier.Dequeue()
 
@@ -62,17 +61,18 @@ module HeightMap =
           endPos <- Some current
 
         for next in (findNeighbors current heightMap) do
-          if not (reached.ContainsKey(next)) then
+          if not (cameFrom.ContainsKey(next)) then
             frontier.Enqueue(next)
-            reached[next] <- Some current
+            cameFrom[next] <- Some current
 
       while endPos.IsSome do
         yield endPos.Value
-        endPos <- reached[endPos.Value]
+        endPos <- cameFrom[endPos.Value]
     }
     |> Seq.rev
 
-  let shortestStepsToGoal heightmap : int = heightmap |> pathToGoal |> Seq.length
+  let shortestStepsToGoal heightmap : int =
+    heightmap |> pathToGoal |> Seq.length |> (fun n -> n - 1)
 
   let parse filename : HeightMap =
     let parseChar c =

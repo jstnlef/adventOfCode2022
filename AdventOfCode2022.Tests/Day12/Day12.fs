@@ -5,7 +5,7 @@ open Xunit
 
 [<Theory>]
 [<InlineData("Day12/sample.txt", 31)>]
-[<InlineData("Day12/input.txt", -1)>]
+[<InlineData("Day12/input.txt", 394)>]
 let ``Fewest steps required to move from current position to best signal`` (fileName: string, expected: int) =
   let result = HeightMap.parse fileName |> HeightMap.shortestStepsToGoal
 
