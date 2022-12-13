@@ -12,18 +12,9 @@ let ``Fewest steps required to move from current position to best signal`` (file
   Assert.Equal(expected, result)
 
 [<Theory>]
-[<InlineData("Day12/sample.txt", -1)>]
-[<InlineData("Day12/input.txt", -1)>]
-let ``Part 2`` (fileName: string, expected: int) =
-  let result = -1
+[<InlineData("Day12/sample.txt", 29)>]
+[<InlineData("Day12/input.txt", 388)>]
+let ``Fewest steps required to move starting from any square with elevation a`` (fileName: string, expected: int) =
+  let result = HeightMap.parse fileName |> HeightMap.shortestStepsFromAnyA
 
   Assert.Equal(expected, result)
-
-[<Fact>]
-let ``Test the base cases for BFS`` () =
-  let path =
-    [| [| Start; Height 1 |]; [| Height 1; BestSignal |] |]
-    |> HeightMap.pathToGoal
-    |> Seq.toList
-
-  Assert.True([ (0, 0); (1, 0); (1, 1) ] = path)

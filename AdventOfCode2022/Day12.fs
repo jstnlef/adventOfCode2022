@@ -44,8 +44,23 @@ module HeightMap =
     }
     |> Seq.find (fun (i, j) -> heightMap[i][j] = Start)
 
-  let pathToGoal (heightMap: HeightMap) : PositionIndex seq =
-    let start = findStartPositionIndex heightMap
+  let private findAllAs (heightMap: HeightMap) : PositionIndex seq =
+    let size = heightMap.Length
+
+    seq {
+      for i in 0 .. size - 1 do
+        for j in 0 .. size - 1 do
+          yield (i, j)
+    }
+    |> Seq.filter (fun (i, j) ->
+      let position = heightMap[i][j]
+
+      match position with
+      | Start -> true
+      | Height n when n = 0 -> true
+      | _ -> false)
+
+  let pathToGoal start (heightMap: HeightMap) : PositionIndex seq =
     let frontier = Queue<PositionIndex>()
     frontier.Enqueue(start)
 
@@ -71,8 +86,15 @@ module HeightMap =
     }
     |> Seq.rev
 
-  let shortestStepsToGoal heightmap : int =
-    heightmap |> pathToGoal |> Seq.length |> (fun n -> n - 1)
+  let shortestStepsToGoal heightMap : int =
+    let start = findStartPositionIndex heightMap
+    heightMap |> pathToGoal start |> Seq.length |> (fun n -> n - 1)
+
+  let shortestStepsFromAnyA heightMap : int =
+    findAllAs heightMap
+    |> Seq.map (fun p -> heightMap |> pathToGoal p |> Seq.length |> (fun n -> n - 1))
+    |> Seq.filter (fun pathSize -> pathSize >= 0)
+    |> Seq.min
 
   let parse filename : HeightMap =
     let parseChar c =
