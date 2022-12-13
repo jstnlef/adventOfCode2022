@@ -12,6 +12,13 @@ type PositionIndex = int * int
 type HeightMap = Position array array
 
 module HeightMap =
+  let iter (heightMap: HeightMap) =
+    seq {
+      for i in 0 .. heightMap.Length - 1 do
+        for j in 0 .. heightMap[0].Length - 1 do
+          yield (i, j)
+    }
+
   let private findNeighbors (i, j) (heightMap: HeightMap) : PositionIndex list =
     let currentPosition = heightMap[i][j]
 
@@ -27,38 +34,25 @@ module HeightMap =
         | Height currentHeight, BestSignal -> if currentHeight >= 25 then Some(i, j) else None
         | _ -> None
 
-
     let up = findNeighbor (i - 1) j
     let down = findNeighbor (i + 1) j
     let left = findNeighbor i (j - 1)
     let right = findNeighbor i (j + 1)
     [ up; down; left; right ] |> List.collect Option.toList
 
-  let private findStartPositionIndex (heightMap: HeightMap) : PositionIndex =
-    let size = heightMap.Length
-
-    seq {
-      for i in 0 .. size - 1 do
-        for j in 0 .. size - 1 do
-          yield (i, j)
-    }
-    |> Seq.find (fun (i, j) -> heightMap[i][j] = Start)
-
   let private findAllAs (heightMap: HeightMap) : PositionIndex seq =
-    let size = heightMap.Length
-
-    seq {
-      for i in 0 .. size - 1 do
-        for j in 0 .. size - 1 do
-          yield (i, j)
-    }
-    |> Seq.filter (fun (i, j) ->
+    let isA (i, j) =
       let position = heightMap[i][j]
 
       match position with
       | Start -> true
       | Height n when n = 0 -> true
-      | _ -> false)
+      | _ -> false
+
+    heightMap |> iter |> Seq.filter isA
+
+  let findStart (heightMap: HeightMap) : PositionIndex =
+    heightMap |> iter |> Seq.find (fun (i, j) -> heightMap[i][j] = Start)
 
   let pathToGoal start (heightMap: HeightMap) : PositionIndex seq =
     let frontier = Queue<PositionIndex>()
@@ -86,14 +80,13 @@ module HeightMap =
     }
     |> Seq.rev
 
-  let shortestStepsToGoal heightMap : int =
-    let start = findStartPositionIndex heightMap
+  let shortestStepsToGoal start heightMap : int =
     heightMap |> pathToGoal start |> Seq.length |> (fun n -> n - 1)
 
   let shortestStepsFromAnyA heightMap : int =
     findAllAs heightMap
-    |> Seq.map (fun p -> heightMap |> pathToGoal p |> Seq.length |> (fun n -> n - 1))
-    |> Seq.filter (fun pathSize -> pathSize >= 0)
+    |> Seq.map (fun p -> shortestStepsToGoal p heightMap)
+    |> Seq.filter (fun pathSize -> pathSize > 0)
     |> Seq.min
 
   let parse filename : HeightMap =
