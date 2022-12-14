@@ -9,28 +9,31 @@ type Packet =
 type PacketPair = Packet * Packet
 
 module PacketPair =
-  let rec isInCorrectOrder (left, right) : bool =
-    let compareIntegers left right : bool = left <= right
+  let isInCorrectOrder (left, right) : bool =
+    let compareIntegers (left: int) (right: int) : int = left.CompareTo(right)
 
-    let compareLists (left: Packet array) (right: Packet array) : bool =
-      let mutable i = 0
-      let mutable state = true
+    let rec compare left right : int =
+      let compareLists (left: Packet array) (right: Packet array) : int =
+        let maxLength = [ left.Length; right.Length ] |> List.max
+        let mutable i = 0
+        let mutable state = 0
 
-      while (state && i < left.Length && i <= right.Length) do
-        if i >= right.Length then
-          state <- false
-        else
-          state <- isInCorrectOrder (left[i], right[i])
+        while (state = 0 && i < maxLength) do
+          if i >= left.Length && i < right.Length then state <- -1
+          elif i < left.Length && i >= right.Length then state <- 1
+          else state <- compare left[i] right[i]
 
-        i <- i + 1
+          i <- i + 1
 
-      state
+        state
 
-    match (left, right) with
-    | Integer l, Integer r -> compareIntegers l r
-    | List l, List r -> compareLists l r
-    | Integer l, List r -> compareLists [| Integer(l) |] r
-    | List l, Integer r -> compareLists l [| Integer(r) |]
+      match (left, right) with
+      | Integer l, Integer r -> compareIntegers l r
+      | List l, List r -> compareLists l r
+      | Integer l, List r -> compareLists [| Integer(l) |] r
+      | List l, Integer r -> compareLists l [| Integer(r) |]
+
+    compare left right = -1
 
 type DistressSignal = PacketPair array
 
