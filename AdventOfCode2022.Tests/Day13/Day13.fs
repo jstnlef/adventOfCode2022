@@ -20,6 +20,18 @@ let ``Part 2`` (fileName: string, expected: int) =
 
   Assert.Equal(expected, result)
 
+[<Fact>]
+let ``Parse line of input`` () =
+  Assert.Equal(List([| Integer(1) |]), Parsing.parsePacket "[1]")
+  Assert.Equal(List([| Integer(10) |]), Parsing.parsePacket "[10]")
+  Assert.Equal(List([||]), Parsing.parsePacket "[]")
+  Assert.Equal(List([| List([||]) |]), Parsing.parsePacket "[[]]")
+
+  Assert.Equal(
+    List([| Integer(1); List([| Integer(2); Integer(3); Integer(4) |]) |]),
+    Parsing.parsePacket "[1,[2,3,4]]"
+  )
+
 [<Theory>]
 [<InlineData(0, true)>]
 [<InlineData(1, true)>]
