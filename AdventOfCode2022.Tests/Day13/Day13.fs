@@ -13,11 +13,10 @@ let ``Sum of the indices of the correct pairs`` (fileName: string, expected: int
   Assert.Equal(expected, result)
 
 [<Theory>]
-[<InlineData("Day13/sample.txt", -1)>]
-[<InlineData("Day13/input.txt", -1)>]
-let ``Part 2`` (fileName: string, expected: int) =
-  let result = -1
-
+[<InlineData("Day13/sample.txt", 140)>]
+[<InlineData("Day13/input.txt", 25935)>]
+let ``Find the decoder key for the distress signal`` (fileName: string, expected: int) =
+  let result = DistressSignal.parse fileName |> DistressSignal.findDecoderKey
   Assert.Equal(expected, result)
 
 [<Fact>]

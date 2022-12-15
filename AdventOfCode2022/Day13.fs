@@ -10,31 +10,30 @@ type Packet =
 type PacketPair = Packet * Packet
 
 module PacketPair =
-  let isInCorrectOrder (left, right) : bool =
+  let rec compare left right : int =
     let compareIntegers (left: int) (right: int) : int = left.CompareTo(right)
 
-    let rec compare left right : int =
-      let compareLists (left: Packet array) (right: Packet array) : int =
-        let maxLength = [ left.Length; right.Length ] |> List.max
-        let mutable i = 0
-        let mutable state = 0
+    let compareLists (left: Packet array) (right: Packet array) : int =
+      let maxLength = [ left.Length; right.Length ] |> List.max
+      let mutable i = 0
+      let mutable state = 0
 
-        while (state = 0 && i < maxLength) do
-          if i >= left.Length && i < right.Length then state <- -1
-          elif i < left.Length && i >= right.Length then state <- 1
-          else state <- compare left[i] right[i]
+      while (state = 0 && i < maxLength) do
+        if i >= left.Length && i < right.Length then state <- -1
+        elif i < left.Length && i >= right.Length then state <- 1
+        else state <- compare left[i] right[i]
 
-          i <- i + 1
+        i <- i + 1
 
-        state
+      state
 
-      match (left, right) with
-      | Integer l, Integer r -> compareIntegers l r
-      | List l, List r -> compareLists l r
-      | Integer l, List r -> compareLists [| Integer(l) |] r
-      | List l, Integer r -> compareLists l [| Integer(r) |]
+    match (left, right) with
+    | Integer l, Integer r -> compareIntegers l r
+    | List l, List r -> compareLists l r
+    | Integer l, List r -> compareLists [| Integer(l) |] r
+    | List l, Integer r -> compareLists l [| Integer(r) |]
 
-    compare left right = -1
+  let isInCorrectOrder (left, right) : bool = compare left right = -1
 
 type DistressSignal = PacketPair array
 
@@ -103,6 +102,22 @@ module DistressSignal =
     |> Seq.map PacketPair.isInCorrectOrder
     |> Seq.mapi (fun i correct -> if correct then i + 1 else -1)
     |> Seq.filter (fun i -> i <> -1)
+
+  let findDecoderKey (distressSignal: DistressSignal) : int =
+    let two = List([| List([| Integer(2) |]) |])
+    let six = List([| List([| Integer(6) |]) |])
+
+    let signalWithDividers =
+      distressSignal |> Array.insertAt distressSignal.Length (two, six)
+
+    let packets = signalWithDividers |> Array.collect (fun (l, r) -> [| l; r |])
+    Array.sortInPlaceWith PacketPair.compare packets
+
+    packets
+    |> Seq.indexed
+    |> Seq.filter (fun (_, p) -> p = two || p = six)
+    |> Seq.map (fun p -> (p |> fst) + 1)
+    |> Seq.reduce (*)
 
   let rec parse filename : DistressSignal =
     File.ReadAllText filename
