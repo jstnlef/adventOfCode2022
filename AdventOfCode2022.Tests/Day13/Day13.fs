@@ -5,7 +5,7 @@ open Xunit
 
 [<Theory>]
 [<InlineData("Day13/sample.txt", 13)>]
-[<InlineData("Day13/input.txt", -1)>]
+[<InlineData("Day13/input.txt", 5717)>]
 let ``Sum of the indices of the correct pairs`` (fileName: string, expected: int) =
   let result =
     DistressSignal.parse fileName |> DistressSignal.findCorrectPairs |> Seq.sum

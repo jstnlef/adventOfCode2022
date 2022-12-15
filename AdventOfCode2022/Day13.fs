@@ -39,11 +39,8 @@ module PacketPair =
 type DistressSignal = PacketPair array
 
 /// Grammar
-/// Integer = Digit
-/// IntList = Integer "," InnerList
-/// Inner = Integer | List | IntList
-/// List = "[" InnerList "]"
-/// Packet = List
+/// Value = Integer | List
+/// List = "[" Value { "," Value } "]"
 module Parsing =
   let rec private parseInteger (chars: char list) : Packet * char list =
     let peek = chars.Head
@@ -69,26 +66,33 @@ module Parsing =
   let private parseRightBracket chars =
     match chars with
     | ']' :: rest -> rest
-    | _ -> failwith "not a left bracket!"
+    | _ -> failwith "not a right bracket!"
+
+  let private parseComma chars =
+    match chars with
+    | ',' :: rest -> rest
+    | _ -> failwith "not a comma!"
 
   let rec private parseList (chars: char list) : Packet * char list =
-    let rec parseInner (chars: char list) : Packet array * char list =
+    // Value = Integer | List
+    let rec parseValue (chars: char list) : Packet * char list =
       let peek = chars[0]
+      if peek = '[' then parseList chars else parseInteger chars
 
-      if peek = ']' then
-        [||], chars
-      else
-        try
-          let i, rest = parseInteger chars
-          [| i |], rest
-        with Failure _ ->
-          let i, rest = parseList chars
-          [| i |], rest
+    let mutable rest = parseLeftBracket chars
+    let mutable inner = []
 
-    let postLeft = parseLeftBracket chars
-    let inner, postInner = parseInner postLeft
-    let rest = parseRightBracket postInner
-    List(inner), rest
+    while rest[0] <> ']' do
+      let packet, postValueChars = parseValue rest
+      inner <- inner @ [ packet ]
+      rest <- postValueChars
+
+      if rest[0] = ',' then
+        rest <- parseComma rest
+
+    rest <- parseRightBracket rest
+
+    List(List.toArray inner), rest
 
   let parsePacket (line: string) =
     (List.ofArray (line.ToCharArray())) |> parseList |> fst
@@ -96,8 +100,9 @@ module Parsing =
 module DistressSignal =
   let findCorrectPairs (distressSignal: DistressSignal) : int seq =
     distressSignal
-    |> Seq.filter PacketPair.isInCorrectOrder
-    |> Seq.mapi (fun i _ -> i + 1)
+    |> Seq.map PacketPair.isInCorrectOrder
+    |> Seq.mapi (fun i correct -> if correct then i + 1 else -1)
+    |> Seq.filter (fun i -> i <> -1)
 
   let rec parse filename : DistressSignal =
     File.ReadAllText filename
