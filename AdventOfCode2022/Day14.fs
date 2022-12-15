@@ -1,5 +1,7 @@
 module Day14
 
+open System
+
 type Location =
   | Rock
   | Air
@@ -19,7 +21,6 @@ type RockLine = (int * int) seq
 type CaveScan = RockLine seq
 
 module CaveScan =
-  open System
   open System.IO
 
   let generateFullRockLine (x1, y1) (x2, y2) =
@@ -42,6 +43,8 @@ module CaveScan =
 
 module Cave =
   let originX, originY = 500, 0
+
+  let getLocation (x, y) cave = cave.map[y][x - cave.minX]
 
   let setLocation (x, y) location cave = cave.map[y][x - cave.minX] <- location
 
@@ -71,7 +74,50 @@ module Cave =
       maxY = maxY
       map = map }
 
-  let simulateUntilFull cave : Cave = cave
+  let private isSolid loc =
+    match loc with
+    | Rock -> true
+    | Air -> false
+    | Sand -> true
+    | Origin -> false
+
+  let simulateSandDrop cave : Cave =
+    let mutable sandX, sandY = originX, originY
+    let mutable resting = false
+
+    try
+      while not resting do
+        let down = (sandX, sandY + 1)
+        let downLeft = (sandX - 1, sandY + 1)
+        let downRight = (sandX + 1, sandY + 1)
+
+        if not (isSolid (getLocation down cave)) then
+          sandY <- sandY + 1
+        elif not (isSolid (getLocation downLeft cave)) then
+          sandX <- sandX - 1
+          sandY <- sandY + 1
+        elif not (isSolid (getLocation downRight cave)) then
+          sandX <- sandX + 1
+          sandY <- sandY + 1
+        else
+          resting <- true
+
+      cave |> setLocation (sandX, sandY) Sand
+
+      { cave with sand = cave.sand + 1 }
+
+    with :? IndexOutOfRangeException ->
+      { cave with filled = true }
+
+  let simulateUntilFull cave : Cave =
+    seq {
+      let mutable cave = cave
+
+      while not cave.filled do
+        cave <- simulateSandDrop cave
+        yield cave
+    }
+    |> Seq.last
 
   let render cave : string =
     let renderLocation location =
