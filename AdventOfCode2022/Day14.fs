@@ -81,6 +81,17 @@ module Cave =
     | Sand -> true
     | Origin -> false
 
+  let fromScanWithFloor scan : Cave =
+    let xs = scan |> Seq.collect (fun rockLine -> rockLine |> Seq.map fst)
+    let ys = scan |> Seq.collect (fun rockLine -> rockLine |> Seq.map snd)
+    let minX = xs |> Seq.min
+    let maxX = xs |> Seq.max
+    let maxY = ys |> Seq.max
+
+    scan
+    |> Seq.insertAt (Seq.length scan) ([ (minX - 150, maxY + 2); (maxX + 150, maxY + 2) ] |> List.toSeq)
+    |> fromScan
+
   let simulateSandDrop cave : Cave =
     let mutable sandX, sandY = originX, originY
     let mutable resting = false
@@ -113,8 +124,11 @@ module Cave =
     seq {
       let mutable cave = cave
 
-      while not cave.filled do
+      let mutable origin = Origin
+
+      while not cave.filled && origin = Origin do
         cave <- simulateSandDrop cave
+        origin <- getLocation (originX, originY) cave
         yield cave
     }
     |> Seq.last
