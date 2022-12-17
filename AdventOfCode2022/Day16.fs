@@ -1,6 +1,5 @@
 module Day16
 
-open System.Collections.Generic
 open System.Text.RegularExpressions
 
 type Pipe =
@@ -11,48 +10,56 @@ type Pipe =
 
 type Pipes =
   { pipes: Pipe array
-    distances: int array array }
+    distances: int array array
+    nonZeroFlowPipes: Pipe array }
 
-let memoize f =
-  let dict = Dictionary<_, _>()
+// let memoize f =
+//   let dict = Dictionary<_, _>()
+//
+//   fun c ->
+//     let exists, value = dict.TryGetValue c
+//
+//     match exists with
+//     | true -> value
+//     | _ ->
+//       let value = f c
+//       dict.Add(c, value)
+//       value
 
-  fun c ->
-    let exists, value = dict.TryGetValue c
-
-    match exists with
-    | true -> value
-    | _ ->
-      let value = f c
-      dict.Add(c, value)
-      value
-
-module Pipes =
+module rec Pipes =
   open System.IO
 
+  let calcPressureReleased delta openValves =
+    openValves
+    |> Set.toSeq
+    |> Seq.map (fun flow -> flow.flowRate * delta)
+    |> Seq.sum
+
+  let rec findMaxPressureForPipe pipeA openValves minutesLeft totalReleased discovered pipes : int =
+    if minutesLeft <= 0 then
+      totalReleased
+    else
+      seq {
+        for pipeB in pipes.nonZeroFlowPipes do
+          if pipeA.name <> pipeB.name then
+            if discovered |> Set.contains pipeB.name |> not then
+              let discovered = Set.add pipeB.name discovered
+              let delta = pipes.distances[pipeA.id][pipeB.id] + 1
+              let minutesLeft = minutesLeft - delta
+              let pressureReleased = calcPressureReleased delta openValves
+              let openValves = Set.add pipeB openValves
+
+              yield
+                findMaxPressureForPipe pipeB openValves minutesLeft (totalReleased + pressureReleased) discovered pipes
+
+        yield totalReleased + (calcPressureReleased minutesLeft openValves)
+      }
+      |> Seq.max
+
+  // let memFindMaxPressureForPipe = memoize findMaxPressureForPipe
+
   let findMostPressureReleased minutes (pipes: Pipes) : int =
-    let nonZeroFlowPipes = pipes.pipes |> Array.filter (fun p -> p.flowRate > 0)
-
-    let rec findMaxPressureForPipe pipeA (openValves: int Set) minutesLeft totalReleased : int =
-      if minutesLeft <= 0 then
-        totalReleased
-      else
-        seq {
-          let mutable discovered = Set.empty
-
-          for pipeB in nonZeroFlowPipes do
-            if pipeA.id <> pipeB.id then
-              if discovered |> Set.contains pipeB |> not then
-                discovered <- Set.add pipeB discovered
-                let delta = pipes.distances[pipeA.id][pipeB.id]
-                let minutesLeftAfter = minutesLeft - delta
-                let newFlowRate = (openValves |> Set.toSeq |> Seq.sum) * delta
-                let openValves = Set.add pipeB.flowRate openValves
-
-                yield findMaxPressureForPipe pipeB openValves (minutesLeftAfter - 1) (totalReleased + newFlowRate)
-        }
-        |> Seq.max
-
-    findMaxPressureForPipe pipes.pipes[0] Set.empty minutes 0
+    findMaxPressureForPipe pipes.pipes[0] Set.empty minutes 0 Set.empty pipes
 
   // Floyd–Warshall algorithm to generate shortest steps from any 2 valves
   let private calculateShortestDistances (pipes: Pipe array) : int array array =
@@ -91,4 +98,5 @@ module Pipes =
     let pipes = File.ReadLines filename |> Seq.mapi parseLine |> Seq.toArray
 
     { pipes = pipes
-      distances = calculateShortestDistances pipes }
+      distances = calculateShortestDistances pipes
+      nonZeroFlowPipes = pipes |> Array.filter (fun p -> p.flowRate > 0) }
