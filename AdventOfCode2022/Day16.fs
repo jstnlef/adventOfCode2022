@@ -30,40 +30,42 @@ module rec Pipes =
   open System.IO
 
   let calcPressureReleased delta openValves =
+    if delta < 0 then
+      failwith "Shouldn't calc pressure with negative delta"
+
     openValves
     |> Set.toSeq
     |> Seq.map (fun flow -> flow.flowRate * delta)
     |> Seq.sum
 
-  let rec findMaxPressureForPipe pipeA openValves minutesLeft totalReleased discovered pipes : int =
+  let rec findMaxPressureForPipe pipeA minutesLeft totalReleased openValves discovered pipes : int =
     seq {
-      if minutesLeft = 0 then
-        yield totalReleased
-      elif minutesLeft < 0 then
+      if minutesLeft < 0 then
         failwith "This should not be called with less than 0 minutes left"
       else
+        // Check each of the pipes I could travel to with non-zero flow.
         for pipeB in pipes.nonZeroFlowPipes do
-          if pipeA.name <> pipeB.name then
-            if discovered |> Set.contains pipeB.name |> not then
-              let discovered = Set.add pipeB.name discovered
-              let delta = pipes.distances[pipeA.id][pipeB.id] + 1
-              let minutesLeft = minutesLeft - delta
-              let pressureReleased = calcPressureReleased delta openValves
-              let openValves = Set.add pipeB openValves
-              let totalReleased = totalReleased + pressureReleased
+          if pipeA.name <> pipeB.name && not (Set.contains pipeB.name discovered) then
+            let discovered = Set.add pipeB.name discovered
+            let delta = pipes.distances[pipeA.id][pipeB.id] + 1
+            let minutesLeft = minutesLeft - delta
 
-              if minutesLeft >= 0 then
-                yield findMaxPressureForPipe pipeB openValves minutesLeft totalReleased discovered pipes
+            if minutesLeft > 0 then
+              let totalReleased = totalReleased + (calcPressureReleased delta openValves)
+              yield findMaxPressureForPipe pipeB minutesLeft totalReleased (Set.add pipeB openValves) discovered pipes
 
-        // I have nowhere else to go to increase the pressure. Just have to wait it out until 0
-        yield totalReleased + (calcPressureReleased minutesLeft openValves)
+        // The value if I just waited here until 0
+        yield totalReleased + (calcPressureReleased (minutesLeft + 1) openValves)
     }
     |> Seq.max
 
   // let memFindMaxPressureForPipe = memoize findMaxPressureForPipe
 
-  let findMostPressureReleased minutes (pipes: Pipes) : int =
-    findMaxPressureForPipe pipes.pipes[0] Set.empty minutes 0 Set.empty pipes
+  let findMostPressureYouCanRelease minutes (pipes: Pipes) : int =
+    findMaxPressureForPipe pipes.pipes[0] minutes 0 Set.empty Set.empty pipes
+
+  let findMostPressureYouAndAnElephantCanRelease minutes (pipes: Pipes) : int =
+    findMaxPressureForPipe pipes.pipes[0] minutes 0 Set.empty Set.empty pipes
 
   // Floyd–Warshall algorithm to generate shortest steps from any 2 valves
   let private calculateShortestDistances (pipes: Pipe array) : int array array =
