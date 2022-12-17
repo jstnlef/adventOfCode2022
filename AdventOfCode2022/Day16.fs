@@ -36,10 +36,12 @@ module rec Pipes =
     |> Seq.sum
 
   let rec findMaxPressureForPipe pipeA openValves minutesLeft totalReleased discovered pipes : int =
-    if minutesLeft <= 0 then
-      totalReleased
-    else
-      seq {
+    seq {
+      if minutesLeft = 0 then
+        yield totalReleased
+      elif minutesLeft < 0 then
+        failwith "This should not be called with less than 0 minutes left"
+      else
         for pipeB in pipes.nonZeroFlowPipes do
           if pipeA.name <> pipeB.name then
             if discovered |> Set.contains pipeB.name |> not then
@@ -48,13 +50,15 @@ module rec Pipes =
               let minutesLeft = minutesLeft - delta
               let pressureReleased = calcPressureReleased delta openValves
               let openValves = Set.add pipeB openValves
+              let totalReleased = totalReleased + pressureReleased
 
-              yield
-                findMaxPressureForPipe pipeB openValves minutesLeft (totalReleased + pressureReleased) discovered pipes
+              if minutesLeft >= 0 then
+                yield findMaxPressureForPipe pipeB openValves minutesLeft totalReleased discovered pipes
 
+        // I have nowhere else to go to increase the pressure. Just have to wait it out until 0
         yield totalReleased + (calcPressureReleased minutesLeft openValves)
-      }
-      |> Seq.max
+    }
+    |> Seq.max
 
   // let memFindMaxPressureForPipe = memoize findMaxPressureForPipe
 
